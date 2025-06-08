@@ -255,6 +255,449 @@ async def process_image(file: UploadFile = File(...)):
             }
         )
 
+# Add new API endpoints for analytics
+@app.get("/api/analytics/graduation-cohort")
+async def get_graduation_cohort_trend():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        query = """
+        SELECT
+          graduated_year,
+          COUNT(*) AS alumni_count
+        FROM alumni_profiles
+        GROUP BY graduated_year
+        ORDER BY graduated_year;
+        """
+        
+        cur.execute(query)
+        results = cur.fetchall()
+        
+        # Format results as list of dictionaries
+        data = [{"year": row[0], "count": row[1]} for row in results]
+        
+        return {"data": data}
+    except Exception as e:
+        logger.error(f"Error fetching graduation cohort data: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "type": type(e).__name__,
+                "message": "Error fetching graduation cohort data"
+            }
+        )
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+@app.get("/api/analytics/gender-breakdown")
+async def get_gender_breakdown():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        query = """
+        SELECT
+          gender,
+          COUNT(*) AS count
+        FROM alumni_profiles
+        GROUP BY gender
+        ORDER BY count DESC;
+        """
+        
+        cur.execute(query)
+        results = cur.fetchall()
+        
+        # Format results as list of dictionaries
+        data = [{"gender": row[0] or "Unknown", "count": row[1]} for row in results]
+        
+        return {"data": data}
+    except Exception as e:
+        logger.error(f"Error fetching gender breakdown data: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "type": type(e).__name__,
+                "message": "Error fetching gender breakdown data"
+            }
+        )
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+@app.get("/api/analytics/program-distribution")
+async def get_program_distribution():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        query = """
+        SELECT
+          program,
+          COUNT(*) AS count
+        FROM alumni_profiles
+        GROUP BY program
+        ORDER BY count DESC;
+        """
+        
+        cur.execute(query)
+        results = cur.fetchall()
+        
+        # Format results as list of dictionaries
+        data = [{"program": row[0] or "Unknown", "count": row[1]} for row in results]
+        
+        return {"data": data}
+    except Exception as e:
+        logger.error(f"Error fetching program distribution data: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "type": type(e).__name__,
+                "message": "Error fetching program distribution data"
+            }
+        )
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+@app.get("/api/analytics/top-job-titles")
+async def get_top_job_titles():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        query = """
+        SELECT
+          current_job_title,
+          COUNT(*) AS count
+        FROM alumni_profiles
+        GROUP BY current_job_title
+        ORDER BY count DESC
+        LIMIT 10;
+        """
+        
+        cur.execute(query)
+        results = cur.fetchall()
+        
+        # Format results as list of dictionaries
+        data = [{"job_title": row[0] or "Unknown", "count": row[1]} for row in results]
+        
+        return {"data": data}
+    except Exception as e:
+        logger.error(f"Error fetching top job titles data: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "type": type(e).__name__,
+                "message": "Error fetching top job titles data"
+            }
+        )
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+@app.get("/api/analytics/geographic-distribution")
+async def get_geographic_distribution():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        query = """
+        SELECT
+          current_job_location_country AS country,
+          COUNT(*) AS count
+        FROM alumni_profiles
+        GROUP BY current_job_location_country
+        ORDER BY count DESC;
+        """
+        
+        cur.execute(query)
+        results = cur.fetchall()
+        
+        # Format results as list of dictionaries
+        data = [{"country": row[0] or "Unknown", "count": row[1]} for row in results]
+        
+        return {"data": data}
+    except Exception as e:
+        logger.error(f"Error fetching geographic distribution data: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "type": type(e).__name__,
+                "message": "Error fetching geographic distribution data"
+            }
+        )
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+@app.get("/api/analytics/dashboard-metrics")
+async def get_dashboard_metrics():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Total Alumni Count
+        cur.execute("""
+            SELECT COUNT(*) AS total_alumni
+            FROM alumni_profiles;
+        """)
+        total_alumni = cur.fetchone()[0]
+
+        # Active Programs Count
+        cur.execute("""
+            SELECT COUNT(DISTINCT program) AS active_programs
+            FROM alumni_profiles
+            WHERE program IS NOT NULL;
+        """)
+        active_programs = cur.fetchone()[0]
+
+        # Global Presence Count
+        cur.execute("""
+            SELECT COUNT(DISTINCT current_job_location_country) AS global_presence
+            FROM alumni_profiles
+            WHERE current_job_location_country IS NOT NULL;
+        """)
+        global_presence = cur.fetchone()[0]
+
+        # Employment Rate
+        cur.execute("""
+            SELECT 
+                ROUND(
+                    COUNT(current_company_name)::decimal / COUNT(*) * 100, 
+                    2
+                ) AS employment_rate_percentage
+            FROM alumni_profiles;
+        """)
+        employment_rate = cur.fetchone()[0]
+
+        # Graduation Statistics
+        cur.execute("""
+            SELECT 
+                COUNT(DISTINCT graduated_year) AS total_graduation_years,
+                COUNT(*) AS total_graduates
+            FROM alumni_profiles;
+        """)
+        graduation_stats = cur.fetchone()
+        total_graduation_years = graduation_stats[0]
+        total_graduates = graduation_stats[1]
+
+        # Get current year graduates
+        cur.execute("""
+            SELECT COUNT(*) as current_year_grads
+            FROM alumni_profiles
+            WHERE graduated_year = EXTRACT(YEAR FROM CURRENT_DATE);
+        """)
+        current_year_grads = cur.fetchone()[0]
+
+        # Get previous year graduates for comparison
+        cur.execute("""
+            SELECT COUNT(*) as previous_year_grads
+            FROM alumni_profiles
+            WHERE graduated_year = EXTRACT(YEAR FROM CURRENT_DATE) - 1;
+        """)
+        previous_year_grads = cur.fetchone()[0]
+
+        # Calculate growth rate
+        growth_rate = 0
+        if previous_year_grads > 0:
+            growth_rate = ((current_year_grads - previous_year_grads) / previous_year_grads) * 100
+
+        return {
+            "data": {
+                "total_alumni": total_alumni,
+                "active_programs": active_programs,
+                "global_presence": global_presence,
+                "employment_rate": employment_rate,
+                "total_graduation_years": total_graduation_years,
+                "total_graduates": total_graduates,
+                "current_year_grads": current_year_grads,
+                "growth_rate": round(growth_rate, 1)
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error fetching dashboard metrics: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "type": type(e).__name__,
+                "message": "Error fetching dashboard metrics"
+            }
+        )
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+@app.post("/api/chatbot")
+async def chat_with_bot(request: dict):
+    try:
+        query = request.get("query", "")
+        context = request.get("context", "alumni_dashboard")
+
+        # Fetch alumni data from database
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        try:
+            # Get all alumni profiles with all relevant fields
+            cur.execute("""
+                SELECT 
+                    first_name,
+                    preferred_name,
+                    last_name,
+                    gender,
+                    graduated_year,
+                    intake,
+                    program,
+                    graduation_awards,
+                    birthdate,
+                    linkedin,
+                    citizenship_primary,
+                    region_primary,
+                    citizenship_secondary,
+                    city_alumni,
+                    country_alumni,
+                    current_job_title,
+                    current_job_location_city,
+                    current_job_location_country,
+                    current_company_name,
+                    current_start_date,
+                    is_in_startup_ecosystem,
+                    startup_description,
+                    created_at
+                FROM alumni_profiles;
+            """)
+            
+            alumni_data = cur.fetchall()
+            
+            # Transform the data into a more readable format
+            alumni_context = []
+            for profile in alumni_data:
+                # Convert date objects to strings for JSON serialization
+                birthdate = profile[8].isoformat() if profile[8] else None
+                current_start_date = profile[19].isoformat() if profile[19] else None
+                created_at = profile[22].isoformat() if profile[22] else None
+
+                alumni_context.append({
+                    "name": {
+                        "first": profile[0],
+                        "preferred": profile[1],
+                        "last": profile[2]
+                    },
+                    "demographics": {
+                        "gender": profile[3],
+                        "birthdate": birthdate,
+                        "citizenship": {
+                            "primary": profile[10],
+                            "secondary": profile[12]
+                        },
+                        "region": profile[11]
+                    },
+                    "education": {
+                        "graduated_year": profile[4],
+                        "intake": profile[5],
+                        "program": profile[6],
+                        "graduation_awards": profile[7]
+                    },
+                    "location": {
+                        "alumni": {
+                            "city": profile[13],
+                            "country": profile[14]
+                        },
+                        "current": {
+                            "city": profile[16],
+                            "country": profile[17]
+                        }
+                    },
+                    "career": {
+                        "job_title": profile[15],
+                        "company": profile[18],
+                        "start_date": current_start_date,
+                        "is_in_startup_ecosystem": profile[20],
+                        "startup_description": profile[21]
+                    },
+                    "social": {
+                        "linkedin": profile[9]
+                    },
+                    "metadata": {
+                        "created_at": created_at
+                    }
+                })
+
+            # Initialize OpenAI client
+            client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+            # Prepare the system message with actual data
+            system_message = f"""You are an AI assistant specialized in analyzing alumni data. 
+            You have access to the following comprehensive alumni data:
+
+            {json.dumps(alumni_context, indent=2)}
+
+            Use this data to provide accurate, data-driven responses. You can:
+            - Analyze demographic trends
+            - Calculate educational statistics
+            - Track career progression
+            - Study geographic distribution
+            - Analyze startup ecosystem participation
+            - Compare different cohorts and programs
+            - Identify patterns in career paths
+            - Calculate employment rates and trends
+            - Analyze international mobility
+            - Study program popularity and outcomes
+
+            Keep responses concise and focused on the data. If you're unsure about specific numbers, acknowledge the uncertainty.
+            Always base your responses on the actual data provided above.
+            When analyzing dates, consider the temporal aspects of the data.
+            For startup ecosystem analysis, use the is_in_startup_ecosystem and startup_description fields."""
+
+            # Get the response from OpenAI
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": query}
+                ],
+                temperature=0
+            )
+
+            return {"response": response.choices[0].message.content}
+            
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
+                
+    except Exception as e:
+        logger.error(f"Error in chatbot: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": str(e),
+                "type": type(e).__name__,
+                "message": "Error processing chatbot request"
+            }
+        )
+
 if __name__ == "__main__":
     import uvicorn
     # Enable debug mode for more detailed error messages
