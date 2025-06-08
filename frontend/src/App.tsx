@@ -1,21 +1,18 @@
 import React from 'react';
 import { Dashboard } from './components/Dashboard';
 import { Chatbot } from './components/Chatbot';
+import { Navbar } from './components/Navbar';
 
 function App() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Dashboard */}
-        <Dashboard />
-        
-        {/* Chatbot Section */}
-        <div className="mt-12">
-          <div className="max-w-4xl mx-auto">
-            <Chatbot />
-          </div>
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <main className="pt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Dashboard />
         </div>
-      </div>
+      </main>
+      <Chatbot />
     </div>
   );
 }
