@@ -35,9 +35,7 @@ export const Chatbot: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // In a real implementation, you would send a POST request to server.py
-      /*
-      const response = await fetch('/api/chatbot', {
+      const response = await fetch('http://localhost:8000/api/chatbot', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -48,21 +46,22 @@ export const Chatbot: React.FC = () => {
         }),
       });
       
-      const data = await response.json();
-      */
+      if (!response.ok) {
+        throw new Error('Failed to get response from chatbot');
+      }
 
-      // Mock response for demonstration
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API delay
+      const data = await response.json();
       
       const botResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: generateMockResponse(inputValue),
+        text: data.response,
         sender: 'bot',
         timestamp: new Date(),
       };
 
       setMessages(prev => [...prev, botResponse]);
     } catch (error) {
+      console.error('Chatbot error:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: 'Sorry, I encountered an error processing your request. Please try again.',
@@ -72,24 +71,6 @@ export const Chatbot: React.FC = () => {
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const generateMockResponse = (query: string): string => {
-    const lowerQuery = query.toLowerCase();
-    
-    if (lowerQuery.includes('graduation') || lowerQuery.includes('trend')) {
-      return 'Based on the graduation trend data, we see steady growth in alumni numbers from 2018 to 2023, with a peak of 423 graduates in 2023. The 2024 numbers are partial as the year is still ongoing.';
-    } else if (lowerQuery.includes('gender') || lowerQuery.includes('diversity')) {
-      return 'Our alumni network shows good gender diversity with 52% female and 42% male graduates. We also have 89 non-binary alumni and 45 who prefer not to specify, demonstrating our inclusive environment.';
-    } else if (lowerQuery.includes('program') || lowerQuery.includes('popular')) {
-      return 'Computer Science is our most popular program with 567 alumni, followed by Business Administration (423) and Engineering (389). These three programs account for about 60% of our alumni base.';
-    } else if (lowerQuery.includes('job') || lowerQuery.includes('career')) {
-      return 'Software Engineer is the most common career path for our alumni (234), followed by Product Manager (167) and Data Analyst (143). This reflects the strong tech focus of our programs.';
-    } else if (lowerQuery.includes('location') || lowerQuery.includes('country') || lowerQuery.includes('geographic')) {
-      return 'Our alumni are globally distributed, with the highest concentration in the United States (678), followed by Canada (234) and the United Kingdom (189). This international presence opens great networking opportunities.';
-    } else {
-      return 'I can help you analyze various aspects of our alumni data including graduation trends, gender distribution, program popularity, career paths, and geographic spread. What specific information would you like to know?';
     }
   };
 

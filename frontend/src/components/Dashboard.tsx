@@ -4,7 +4,7 @@ import { GenderBreakdownChart } from './charts/GenderBreakdownChart';
 import { ProgramDistributionChart } from './charts/ProgramDistributionChart';
 import { JobTitlesChart } from './charts/JobTitlesChart';
 import { GeographicChart } from './charts/GeographicChart';
-import { RefreshCw, Users, GraduationCap, MapPin, Briefcase, TrendingUp } from 'lucide-react';
+import * as Icons from 'lucide-react';
 
 interface DashboardData {
   graduationTrend: Array<{ graduated_year: number; alumni_count: number }>;
@@ -12,6 +12,17 @@ interface DashboardData {
   programDistribution: Array<{ program: string; count: number }>;
   jobTitles: Array<{ current_job_title: string; count: number }>;
   geographic: Array<{ country: string; count: number }>;
+}
+
+interface DashboardMetrics {
+  total_alumni: number;
+  active_programs: number;
+  global_presence: number;
+  employment_rate: number;
+  total_graduation_years: number;
+  total_graduates: number;
+  current_year_grads: number;
+  growth_rate: number;
 }
 
 interface MetricCard {
@@ -25,6 +36,7 @@ interface MetricCard {
 
 export const Dashboard: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,73 +45,51 @@ export const Dashboard: React.FC = () => {
     setError(null);
     
     try {
-      // In a real implementation, you would make POST requests to your Supabase backend
-      // For demo purposes, we'll use mock data
+      const baseUrl = 'http://localhost:8000/api/analytics';
       
-      // Example of how the actual API calls would look:
-      /*
-      const responses = await Promise.all([
-        fetch('/api/graduation-trend', { method: 'POST' }),
-        fetch('/api/gender-breakdown', { method: 'POST' }),
-        fetch('/api/program-distribution', { method: 'POST' }),
-        fetch('/api/job-titles', { method: 'POST' }),
-        fetch('/api/geographic', { method: 'POST' }),
+      // Fetch both chart data and metrics
+      const [chartDataResponse, metricsResponse] = await Promise.all([
+        Promise.all([
+          fetch(`${baseUrl}/graduation-cohort`),
+          fetch(`${baseUrl}/gender-breakdown`),
+          fetch(`${baseUrl}/program-distribution`),
+          fetch(`${baseUrl}/top-job-titles`),
+          fetch(`${baseUrl}/geographic-distribution`),
+        ]),
+        fetch(`${baseUrl}/dashboard-metrics`)
       ]);
       
       const [graduationTrend, genderBreakdown, programDistribution, jobTitles, geographic] = 
-        await Promise.all(responses.map(res => res.json()));
-      */
-
-      // Mock data for demonstration
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
+        await Promise.all(chartDataResponse.map(res => res.json()));
       
-      const mockData: DashboardData = {
-        graduationTrend: [
-          { graduated_year: 2018, alumni_count: 245 },
-          { graduated_year: 2019, alumni_count: 312 },
-          { graduated_year: 2020, alumni_count: 189 },
-          { graduated_year: 2021, alumni_count: 278 },
-          { graduated_year: 2022, alumni_count: 356 },
-          { graduated_year: 2023, alumni_count: 423 },
-          { graduated_year: 2024, alumni_count: 198 },
-        ],
-        genderBreakdown: [
-          { gender: 'Female', count: 1287 },
-          { gender: 'Male', count: 1043 },
-          { gender: 'Non-binary', count: 89 },
-          { gender: 'Prefer not to say', count: 45 },
-        ],
-        programDistribution: [
-          { program: 'Computer Science', count: 567 },
-          { program: 'Business Administration', count: 423 },
-          { program: 'Engineering', count: 389 },
-          { program: 'Data Science', count: 234 },
-          { program: 'Digital Marketing', count: 198 },
-          { program: 'Design', count: 167 },
-        ],
-        jobTitles: [
-          { current_job_title: 'Software Engineer', count: 234 },
-          { current_job_title: 'Product Manager', count: 167 },
-          { current_job_title: 'Data Analyst', count: 143 },
-          { current_job_title: 'UX Designer', count: 98 },
-          { current_job_title: 'Business Analyst', count: 87 },
-          { current_job_title: 'Marketing Manager', count: 76 },
-          { current_job_title: 'DevOps Engineer', count: 65 },
-          { current_job_title: 'Sales Representative', count: 54 },
-        ],
-        geographic: [
-          { country: 'United States', count: 678 },
-          { country: 'Canada', count: 234 },
-          { country: 'United Kingdom', count: 189 },
-          { country: 'Germany', count: 143 },
-          { country: 'Australia', count: 98 },
-          { country: 'Netherlands', count: 76 },
-          { country: 'Singapore', count: 65 },
-          { country: 'France', count: 54 },
-        ],
+      const metricsData = await metricsResponse.json();
+
+      // Transform the chart data
+      const transformedData: DashboardData = {
+        graduationTrend: graduationTrend.data.map((item: any) => ({
+          graduated_year: item.year,
+          alumni_count: item.count
+        })),
+        genderBreakdown: genderBreakdown.data.map((item: any) => ({
+          gender: item.gender,
+          count: item.count
+        })),
+        programDistribution: programDistribution.data.map((item: any) => ({
+          program: item.program,
+          count: item.count
+        })),
+        jobTitles: jobTitles.data.map((item: any) => ({
+          current_job_title: item.job_title,
+          count: item.count
+        })),
+        geographic: geographic.data.map((item: any) => ({
+          country: item.country,
+          count: item.count
+        }))
       };
       
-      setData(mockData);
+      setData(transformedData);
+      setMetrics(metricsData.data);
     } catch (err) {
       setError('Failed to fetch dashboard data');
       console.error('Dashboard data fetch error:', err);
@@ -112,66 +102,61 @@ export const Dashboard: React.FC = () => {
     fetchDashboardData();
   }, []);
 
-  // Calculate metrics from data
+  // Calculate metrics from real data
   const getMetrics = (): MetricCard[] => {
-    if (!data) return [];
+    if (!metrics) return [];
 
-    const totalAlumni = data.genderBreakdown.reduce((sum, item) => sum + item.count, 0);
-    const totalCountries = data.geographic.length;
-    const totalPrograms = data.programDistribution.length;
-    const currentYearGrads = data.graduationTrend.find(item => item.graduated_year === 2024)?.alumni_count || 0;
-    const lastYearGrads = data.graduationTrend.find(item => item.graduated_year === 2023)?.alumni_count || 0;
-    const growthRate = lastYearGrads > 0 ? ((currentYearGrads - lastYearGrads) / lastYearGrads * 100) : 0;
-
-    return [
+    const metricCards: MetricCard[] = [
       {
         title: 'Total Alumni',
-        value: totalAlumni.toLocaleString(),
-        change: '+12.5% from last year',
-        changeType: 'positive',
-        icon: <Users className="w-6 h-6" />,
+        value: metrics.total_alumni.toLocaleString(),
+        change: `${metrics.growth_rate >= 0 ? '+' : ''}${metrics.growth_rate}% from last year`,
+        changeType: metrics.growth_rate >= 0 ? 'positive' : 'negative',
+        icon: <Icons.Users className="w-6 h-6" />,
         color: 'from-blue-500 to-blue-600'
       },
       {
         title: 'Active Programs',
-        value: totalPrograms.toString(),
-        change: '+2 new programs',
+        value: metrics.active_programs.toString(),
+        change: `${metrics.active_programs > 0 ? '+' : ''}${metrics.active_programs} active programs`,
         changeType: 'positive',
-        icon: <GraduationCap className="w-6 h-6" />,
+        icon: <Icons.GraduationCap className="w-6 h-6" />,
         color: 'from-purple-500 to-purple-600'
       },
       {
         title: 'Global Presence',
-        value: `${totalCountries} Countries`,
-        change: '+3 new countries',
+        value: `${metrics.global_presence} Countries`,
+        change: `${metrics.global_presence > 0 ? '+' : ''}${metrics.global_presence} countries`,
         changeType: 'positive',
-        icon: <MapPin className="w-6 h-6" />,
+        icon: <Icons.MapPin className="w-6 h-6" />,
         color: 'from-teal-500 to-teal-600'
       },
       {
         title: 'Employment Rate',
-        value: '94.2%',
-        change: '+2.1% improvement',
+        value: `${metrics.employment_rate}%`,
+        change: `${metrics.employment_rate > 0 ? '+' : ''}${metrics.employment_rate}% employed`,
         changeType: 'positive',
-        icon: <Briefcase className="w-6 h-6" />,
+        icon: <Icons.Briefcase className="w-6 h-6" />,
         color: 'from-green-500 to-green-600'
       },
       {
         title: '2024 Graduates',
-        value: currentYearGrads.toLocaleString(),
-        change: `${growthRate >= 0 ? '+' : ''}${growthRate.toFixed(1)}% vs 2023`,
-        changeType: growthRate >= 0 ? 'positive' : 'negative',
-        icon: <TrendingUp className="w-6 h-6" />,
+        value: metrics.current_year_grads.toLocaleString(),
+        change: `${metrics.growth_rate >= 0 ? '+' : ''}${metrics.growth_rate}% vs 2023`,
+        changeType: metrics.growth_rate >= 0 ? 'positive' : 'negative',
+        icon: <Icons.TrendingUp className="w-6 h-6" />,
         color: 'from-orange-500 to-orange-600'
       }
     ];
+
+    return metricCards;
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="flex items-center space-x-3">
-          <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+          <Icons.RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
           <span className="text-lg font-medium text-gray-700">Loading dashboard...</span>
         </div>
       </div>
@@ -197,7 +182,7 @@ export const Dashboard: React.FC = () => {
     );
   }
 
-  const metrics = getMetrics();
+  const metricCards = getMetrics();
 
   return (
     <div className="space-y-8">
@@ -211,39 +196,36 @@ export const Dashboard: React.FC = () => {
           onClick={fetchDashboardData}
           className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
-          <RefreshCw className="w-4 h-4" />
+          <Icons.RefreshCw className="w-4 h-4" />
           <span>Refresh</span>
         </button>
       </div>
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        {metrics.map((metric, index) => (
+        {metricCards.map((metric, index) => (
           <div
             key={index}
-            className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+            className={`bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow`}
           >
             <div className="flex items-center justify-between mb-4">
-              <div className={`p-3 rounded-xl bg-gradient-to-r ${metric.color} text-white shadow-lg`}>
+              <h3 className="text-gray-500 text-sm font-medium">{metric.title}</h3>
+              <div className={`p-2 rounded-lg bg-gradient-to-br ${metric.color}`}>
                 {metric.icon}
               </div>
             </div>
-            
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-gray-600 uppercase tracking-wide">
-                {metric.title}
-              </h3>
-              <p className="text-2xl font-bold text-gray-900">
-                {metric.value}
-              </p>
-              <div className="flex items-center space-x-1">
-                <span className={`text-sm font-medium ${
-                  metric.changeType === 'positive' 
-                    ? 'text-green-600' 
-                    : metric.changeType === 'negative' 
-                    ? 'text-red-600' 
-                    : 'text-gray-600'
-                }`}>
+            <div className="space-y-1">
+              <p className="text-2xl font-semibold text-gray-900">{metric.value}</p>
+              <div className="flex items-center space-x-2">
+                <span
+                  className={`text-sm font-medium ${
+                    metric.changeType === 'positive'
+                      ? 'text-green-600'
+                      : metric.changeType === 'negative'
+                      ? 'text-red-600'
+                      : 'text-gray-600'
+                  }`}
+                >
                   {metric.change}
                 </span>
               </div>
@@ -254,30 +236,21 @@ export const Dashboard: React.FC = () => {
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Graduation Trend */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <GraduationTrendChart data={data.graduationTrend} />
         </div>
-
-        {/* Gender Breakdown */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <GenderBreakdownChart data={data.genderBreakdown} />
         </div>
-
-        {/* Program Distribution */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <ProgramDistributionChart data={data.programDistribution} />
         </div>
-
-        {/* Job Titles */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <JobTitlesChart data={data.jobTitles} />
         </div>
-      </div>
-
-      {/* Geographic Chart - Full Width */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
-        <GeographicChart data={data.geographic} />
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 lg:col-span-2">
+          <GeographicChart data={data.geographic} />
+        </div>
       </div>
     </div>
   );

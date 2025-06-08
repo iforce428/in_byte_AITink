@@ -30,13 +30,18 @@ interface GraduationTrendChartProps {
   data: GraduationTrendData[];
 }
 
-export const GraduationTrendChart: React.FC<GraduationTrendChartProps> = ({ data }) => {
+export const GraduationTrendChart: React.FC<GraduationTrendChartProps> = ({ data = [] }) => {
+  // Ensure data is valid and sorted by year
+  const validData = data
+    .filter(item => item && typeof item.graduated_year === 'number' && typeof item.alumni_count === 'number')
+    .sort((a, b) => a.graduated_year - b.graduated_year);
+
   const chartData = {
-    labels: data.map(item => item.graduated_year.toString()),
+    labels: validData.map(item => item.graduated_year.toString()),
     datasets: [
       {
         label: 'Alumni Count',
-        data: data.map(item => item.alumni_count),
+        data: validData.map(item => item.alumni_count),
         borderColor: '#3B82F6',
         backgroundColor: 'rgba(59, 130, 246, 0.1)',
         tension: 0.4,
@@ -59,7 +64,7 @@ export const GraduationTrendChart: React.FC<GraduationTrendChartProps> = ({ data
         labels: {
           font: {
             size: 12,
-            weight: '500',
+            weight: 'normal' as const,
           },
           color: '#374151',
         },
@@ -69,7 +74,7 @@ export const GraduationTrendChart: React.FC<GraduationTrendChartProps> = ({ data
         text: 'Graduation Cohort Trend',
         font: {
           size: 16,
-          weight: '600',
+          weight: 'bold' as const,
         },
         color: '#111827',
         padding: 20,
@@ -93,6 +98,7 @@ export const GraduationTrendChart: React.FC<GraduationTrendChartProps> = ({ data
         ticks: {
           font: {
             size: 11,
+            weight: 'normal' as const,
           },
           color: '#6B7280',
         },
@@ -104,6 +110,7 @@ export const GraduationTrendChart: React.FC<GraduationTrendChartProps> = ({ data
         ticks: {
           font: {
             size: 11,
+            weight: 'normal' as const,
           },
           color: '#6B7280',
         },
